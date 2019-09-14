@@ -1,4 +1,4 @@
-#include "include/binload.h"
+#include "binload.h"
 
 struct binary *
 binary_load(char *fname)

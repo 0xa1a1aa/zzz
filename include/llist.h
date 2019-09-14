@@ -4,7 +4,27 @@
 struct llist {
 	void *data;
 	struct llist *next;
-}
+};
+
+/*
+ * Create a new linked list
+ *
+ * @params:
+ * 	data: pointer to data for the first node
+ * @returns:
+ * 	pointer to llist struct
+ */
+struct llist *llist_init(void *data);
+
+/*
+ * Destroy a linked list
+ *
+ * @params:
+ * 	llist: linked list to destroy
+ * @returns;
+ * 	-
+ */
+void llist_destroy(struct llist *llist);
 
 /*
  * Append a new node to a linked list
