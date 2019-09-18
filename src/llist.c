@@ -19,11 +19,8 @@ llist_init(void *data)
 void
 llist_destroy(struct llist *llist)
 {
-	struct llist *head;
-
-	head = llist;
-	while (head != NULL) {
-		head = llist_rem_by_idx(head, -1);
+	while (llist != NULL) {
+		llist = llist_rem_by_idx(llist, -1);
 	}
 }
 
@@ -42,6 +39,32 @@ llist_append(struct llist *llist, void *data)
 		err = -ENOMEM;
 	}
 	return err;
+}
+
+struct llist *
+llist_get_by_idx(struct llist *llist, int idx)
+{
+	struct llist *entry;
+
+	entry = NULL;
+	if (idx < 0) {
+		while(llist) {
+			if (llist->next == NULL) {
+				entry = llist;
+				break;
+			}
+			llist = llist->next;
+		}
+	} else {
+		while(llist) {
+			if (idx-- == 0) {
+				entry = llist;
+				break;
+			}
+			llist = llist->next;
+		}
+	}
+	return entry;
 }
 
 struct llist *

@@ -12,8 +12,7 @@ enum bin_type {
 };
 
 enum bin_arch {
-	ARCH_X86,
-	ARCH_X86_64
+	ARCH_X86
 };
 
 enum sec_type {
@@ -29,9 +28,12 @@ enum sym_type {
 
 struct binary {
 	char *name;
+	uint64_t entry;
 	uint8_t type;
+	char *type_str;
 	uint16_t arch;
-	uint8_t *entry;
+	char *arch_str;
+	uint8_t bits;
 	struct llist *sections;
 	struct llist *symbols;
 };
@@ -39,7 +41,7 @@ struct binary {
 struct section {
 	uint8_t type;
 	char *name;
-	uint8_t *vma;
+	uint64_t vma;
 	uint8_t *bytes;
 	size_t size;
 };
@@ -47,7 +49,7 @@ struct section {
 struct symbol {
 	uint8_t type;
 	char *name;
-	uint8_t *addr;
+	uint64_t addr;
 };
 
 /*
@@ -71,13 +73,14 @@ struct binary *binary_load(char *name);
 void binary_unload(struct binary *bin);
 
 /*
- * Get the text section of a binary
+ * Get a section of the binary by name
  *
  * @params:
- * 	bin: struct binary from which to get the text section
+ * 	bin: struct binary
+ * 	name: section name
  * @returns:
  * 	pointer to struct section on success, else NULL
  */
-struct section *binary_get_text_section(struct binary *bin);
+struct section *binary_get_section_by_name(struct binary *bin, char *name);
 
 #endif /* __BINLOAD__ */

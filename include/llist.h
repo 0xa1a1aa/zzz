@@ -41,6 +41,17 @@ void llist_destroy(struct llist *llist);
 int llist_append(struct llist *llist, void *data);
 
 /*
+ * Get a llist node by index
+ *
+ * @params:
+ * 	llist: linked list
+ * 	idx: index of node
+ * @returns:
+ * 	pointer to llist or NULL
+ */
+struct llist *llist_get_by_idx(struct llist *llist, int idx);
+
+/*
  * Remove node of linked list by index
  *
  * @params:
