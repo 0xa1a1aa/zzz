@@ -20,7 +20,7 @@ void
 llist_destroy(struct llist *llist)
 {
 	while (llist != NULL) {
-		llist = llist_rem_by_idx(llist, -1);
+		llist = llist_rem_by_idx(llist, 0);
 	}
 }
 
