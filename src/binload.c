@@ -55,7 +55,7 @@ binary_load(char *fname)
 			goto fail;
 	}
 	bfd_info = bfd_get_arch_info(bfd_h);
-	bin->arch_str = (char *) malloc(strlen(bfd_info->printable_name));
+	bin->arch_str = (char *) malloc(strlen(bfd_info->printable_name) + 1);
 	if (bin->arch_str) {
 		strncpy(bin->arch_str, bfd_info->printable_name, strlen(bfd_info->printable_name));
 	}
@@ -70,9 +70,11 @@ binary_load(char *fname)
 			fprintf(stderr, "unsupported architecture (%s)\n", bfd_info->printable_name);
 			goto fail;
 	}
+	/*
 	load_sections(bfd_h, bin);
 	load_symbols(bfd_h, bin);
 	load_dyn_symbols(bfd_h, bin);
+	*/
 
 	goto cleanup;
 fail:
