@@ -63,18 +63,18 @@ binary_load(char *fname)
 		case bfd_mach_i386_i386:
 			bin->arch = ARCH_X86;
 			bin->bits = 32;
+			break;
 		case bfd_mach_x86_64:
 			bin->arch = ARCH_X86;
 			bin->bits = 64;
+			break;
 		default:
 			fprintf(stderr, "unsupported architecture (%s)\n", bfd_info->printable_name);
 			goto fail;
 	}
-	/*
 	load_sections(bfd_h, bin);
 	load_symbols(bfd_h, bin);
 	load_dyn_symbols(bfd_h, bin);
-	*/
 
 	goto cleanup;
 fail:
@@ -91,21 +91,21 @@ binary_unload(struct binary *bin)
 {
 	struct llist *llist, *node;
 
-	/* free sections */
-	llist = bin->sections;
-	while(llist) {
-		node = llist_get_by_idx(llist, 0);
-		section_destroy((struct section *) node->data);
-		llist = llist_rem_by_idx(llist, 0);
+	if (bin) {
+		llist = bin->sections;
+		while(llist) {
+			node = llist_get_by_idx(llist, 0);
+			section_destroy((struct section *) node->data);
+			llist = llist_rem_by_idx(llist, 0);
+		}
+		llist = bin->symbols;
+		while(llist) {
+			node = llist_get_by_idx(llist, 0);
+			symbol_destroy((struct symbol *) node->data);
+			llist = llist_rem_by_idx(llist, 0);
+		}
+		binary_destroy(bin);
 	}
-	/* free symbols */
-	llist = bin->symbols;
-	while(llist) {
-		node = llist_get_by_idx(llist, 0);
-		symbol_destroy((struct symbol *) node->data);
-		llist = llist_rem_by_idx(llist, 0);
-	}
-	binary_destroy(bin);
 }
 
 struct section *
