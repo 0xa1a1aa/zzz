@@ -157,6 +157,45 @@ open_bfd(char *fname)
 static void
 load_sections(bfd *bfd_h, struct binary *bin)
 {
+	asection *bfd_sec;
+	struct section *sec;
+
+	for (bfd_sec = bfd_h->sections; bfd_sec != NULL; bfd_sec = bfd_sec->next) {
+		sec = section_init();
+		switch (bfd_sec->flags) {
+			case SEC_NO_FLAGS:
+				sec->type = SEC_TYPE_NONE;
+				break;
+			case SEC_DATA:
+				sec->type = SEC_TYPE_DATA;
+				break;
+			case SEC_CODE:
+				sec->type = SEC_TYPE_CODE;
+				break;
+			default:
+				;
+		}
+		sec->name = (char *) malloc(sizeof(bfd_section_name(bfd_h, bfd_sec)) + 1);
+		if (sec->name) {
+			strncpy(sec->name, bfd_section_name(bfd_h, bfd_sec), sizeof(bfd_section_name(bfd_h, bfd_sec)));
+		}
+		sec->vma = bfd_section_vma(bfd_h, bfd_sec);
+		sec->size = bfd_section_size(bfd_h, bfd_sec);
+		sec->bytes = (uint8_t *) malloc(sec->size);
+		if (sec->bytes) {
+			if (!bfd_get_section_contents(bfd_h, bfd_sec, sec->bytes, 0, sec->size)) {
+				section_destroy(sec);
+				continue;
+			}
+		}
+
+		if (!bin->sections) {
+			bin->sections = llist_init((void *) sec);
+		} else {
+			llist_append(bin->sections, (void *) sec);
+		}
+	}
+
 }
 
 static void
