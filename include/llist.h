@@ -1,6 +1,15 @@
 #ifndef __LLIST__
 #define __LLIST__
 
+enum llist_error {
+	ENOMEM
+};
+
+/*
+ * Data destructor function
+ */
+typedef void (*data_dtor_t)(void *data);
+
 struct llist {
 	void *data;
 	struct llist *next;
@@ -21,10 +30,11 @@ struct llist *llist_init(void *data);
  *
  * @params:
  * 	llist: linked list to destroy
+ * 	data_dtor: Data destructor function which gets called for every llist node
  * @returns;
  * 	-
  */
-void llist_destroy(struct llist *llist);
+void llist_destroy(struct llist *llist, data_dtor_t data_dtor);
 
 /*
  * Append a new node to a linked list
@@ -59,9 +69,10 @@ struct llist *llist_get_by_idx(struct llist *llist, int idx);
  * 	idx: index of node to remove
  * 		- first node has index 0
  * 		- if idx is less than 0, the last node gets removed
+ * 	data: the pointer to the data from the removed node gets stored here
  * @returns:
  * 	pointer to new linked list head
  */
-struct llist *llist_rem_by_idx(struct llist *llist, int idx);
+struct llist *llist_rem_by_idx(struct llist *llist, int idx, void **data);
 
 #endif /* __LLIST__ */

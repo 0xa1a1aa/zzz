@@ -1,26 +1,24 @@
 #include <stdlib.h>
 #include "llist.h"
 
-enum llist_error {
-	ENOMEM
-};
-
 static struct llist *llist_node_init(void *data);
 
 struct llist *
 llist_init(void *data)
 {
-	struct llist *new;
-
-	new = llist_node_init(data);
-	return new;
+	return llist_node_init(data);
 }
 
 void
-llist_destroy(struct llist *llist)
+llist_destroy(struct llist *llist, data_dtor_t data_dtor)
 {
+	void *data;
+
 	while (llist != NULL) {
-		llist = llist_rem_by_idx(llist, 0);
+		llist = llist_rem_by_idx(llist, 0, &data);
+		if (data_dtor) {
+			data_dtor(data);
+		}
 	}
 }
 
@@ -36,7 +34,7 @@ llist_append(struct llist *llist, void *data)
 		for (node = llist; node->next != NULL; node = node->next);
 		node->next = new;
 	} else {
-		err = -ENOMEM;
+		err = ENOMEM;
 	}
 	return err;
 }
@@ -68,7 +66,7 @@ llist_get_by_idx(struct llist *llist, int idx)
 }
 
 struct llist *
-llist_rem_by_idx(struct llist *llist, int idx)
+llist_rem_by_idx(struct llist *llist, int idx, void **data)
 {
 	struct llist *node;
 	struct llist **node_p;
@@ -79,6 +77,7 @@ llist_rem_by_idx(struct llist *llist, int idx)
 		while(node) {
 			if (node->next == NULL) {
 				*node_p = NULL;
+				*data = node->data;
 				free(node);
 				break;
 			}
@@ -89,6 +88,7 @@ llist_rem_by_idx(struct llist *llist, int idx)
 		while(node) {
 			if (idx-- == 0) {
 				*node_p = node->next;
+				*data = node->data;
 				free(node);
 				break;
 			}
@@ -104,7 +104,7 @@ llist_node_init(void *data)
 {
 	struct llist *llist;
 
-	llist = (struct llist *)malloc(sizeof(*llist));
+	llist = (struct llist *) malloc(sizeof(*llist));
 	if (llist) {
 		llist->data = data;
 		llist->next = NULL;

@@ -22,7 +22,7 @@ enum sec_type {
 };
 
 enum sym_type {
-	SYM_TYPE_UKN,
+	SYM_TYPE_SEC,
 	SYM_TYPE_FUNC
 };
 

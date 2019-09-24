@@ -1,6 +1,6 @@
 /*
- * This is a workaround. See:
- * https://stackoverflow.com/questions/11748035/binutils-bfd-h-wants-config-h-now
+ * This is a workaround, for not using autotools.
+ * See: https://stackoverflow.com/questions/11748035/binutils-bfd-h-wants-config-h-now
  */
 #define PACKAGE "binload"
 #define PACKAGE_VERSION "1.0.0"
@@ -22,6 +22,8 @@ static struct symbol *symbol_init(void);
 static void binary_destroy(struct binary *bin);
 static void section_destroy(struct section *sec);
 static void symbol_destroy(struct symbol *sym);
+static void llist_sec_dtor(void *data);
+static void llist_sym_dtor(void *data);
 
 struct binary *
 binary_load(char *fname)
@@ -43,7 +45,8 @@ binary_load(char *fname)
 	if (bin->type_str) {
 		strncpy(bin->type_str, bfd_h->xvec->name, strlen(bfd_h->xvec->name));
 	}
-	switch(bfd_h->xvec->flavour) {
+
+	switch (bfd_h->xvec->flavour) {
 		case bfd_target_elf_flavour:
 			bin->type = BIN_TYPE_ELF;
 			break;
@@ -59,7 +62,7 @@ binary_load(char *fname)
 	if (bin->arch_str) {
 		strncpy(bin->arch_str, bfd_info->printable_name, strlen(bfd_info->printable_name));
 	}
-	switch(bfd_info->mach) {
+	switch (bfd_info->mach) {
 		case bfd_mach_i386_i386:
 			bin->arch = ARCH_X86;
 			bin->bits = 32;
@@ -89,23 +92,7 @@ cleanup:
 void
 binary_unload(struct binary *bin)
 {
-	struct llist *llist, *node;
-
-	if (bin) {
-		llist = bin->sections;
-		while(llist) {
-			node = llist_get_by_idx(llist, 0);
-			section_destroy((struct section *) node->data);
-			llist = llist_rem_by_idx(llist, 0);
-		}
-		llist = bin->symbols;
-		while(llist) {
-			node = llist_get_by_idx(llist, 0);
-			symbol_destroy((struct symbol *) node->data);
-			llist = llist_rem_by_idx(llist, 0);
-		}
-		binary_destroy(bin);
-	}
+	if (bin) binary_destroy(bin);
 }
 
 struct section *
@@ -162,18 +149,12 @@ load_sections(bfd *bfd_h, struct binary *bin)
 
 	for (bfd_sec = bfd_h->sections; bfd_sec != NULL; bfd_sec = bfd_sec->next) {
 		sec = section_init();
-		switch (bfd_sec->flags) {
-			case SEC_NO_FLAGS:
-				sec->type = SEC_TYPE_NONE;
-				break;
-			case SEC_DATA:
-				sec->type = SEC_TYPE_DATA;
-				break;
-			case SEC_CODE:
-				sec->type = SEC_TYPE_CODE;
-				break;
-			default:
-				;
+		if (bfd_sec->flags & SEC_NO_FLAGS) {
+			sec->type = SEC_TYPE_NONE;
+		} else if (bfd_sec->flags & SEC_DATA) {
+			sec->type = SEC_TYPE_DATA;
+		} else if (bfd_sec->flags & SEC_CODE) {
+			sec->type = SEC_TYPE_CODE;
 		}
 		sec->name = (char *) malloc(sizeof(bfd_section_name(bfd_h, bfd_sec)) + 1);
 		if (sec->name) {
@@ -201,6 +182,42 @@ load_sections(bfd *bfd_h, struct binary *bin)
 static void
 load_symbols(bfd *bfd_h, struct binary *bin)
 {
+	asymbol **sym_tab;
+	long nbytes, nsyms, i;
+	struct symbol *sym;
+
+	nbytes = bfd_get_symtab_upper_bound (bfd_h);
+	if (nbytes < 0) {
+		fprintf(stderr, "failed to read symtab (%s)\n", bfd_errmsg(bfd_get_error()));
+	} else if (nbytes > 0) {
+		sym_tab = (asymbol **) malloc(nbytes);
+		if (sym_tab) {
+			nsyms = bfd_canonicalize_symtab(bfd_h, sym_tab);
+			if (nsyms < 0) {
+				fprintf(stderr, "failed to read symtab (%s)\n", bfd_errmsg(bfd_get_error()));
+			}
+			for (i = 0; i < nsyms; ++i) {
+				sym = symbol_init();
+				if (sym_tab[i]->flags & BSF_FUNCTION) {
+					sym->type = SYM_TYPE_FUNC;
+				} else if (sym_tab[i]->flags & BSF_SECTION_SYM) {
+					sym->type = SYM_TYPE_SEC;
+				}
+				sym->name = (char *) malloc(strlen(sym_tab[i]->name) + 1);
+				if (sym->name) {
+					strncpy(sym->name, sym_tab[i]->name, strlen(sym_tab[i]->name));
+				}
+				sym->addr = bfd_asymbol_value(sym_tab[i]);
+
+				if (!bin->symbols) {
+					bin->symbols = llist_init((void *) sym);
+				} else {
+					llist_append(bin->symbols, (void *) sym);
+				}
+			}
+			free(sym_tab);
+		}
+	}
 }
 
 static void
@@ -232,6 +249,8 @@ binary_destroy(struct binary *bin)
 	if (bin->name) free(bin->name);
 	if (bin->type_str) free(bin->type_str);
 	if (bin->arch_str) free(bin->arch_str);
+	llist_destroy(bin->sections, llist_sec_dtor);
+	llist_destroy(bin->symbols, llist_sym_dtor);
 	free(bin);
 }
 
@@ -239,6 +258,7 @@ static void
 section_destroy(struct section *sec)
 {
 	if (sec->name) free(sec->name);
+	if (sec->bytes) free(sec->bytes);
 	free(sec);
 }
 
@@ -248,3 +268,16 @@ symbol_destroy(struct symbol *sym)
 	if (sym->name) free(sym->name);
 	free(sym);
 }
+
+static void
+llist_sec_dtor(void *data)
+{
+	section_destroy((struct section *) data);
+}
+
+static void
+llist_sym_dtor(void *data)
+{
+	symbol_destroy((struct symbol *) data);
+}
+
