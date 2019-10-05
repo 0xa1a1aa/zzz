@@ -36,6 +36,22 @@ main(int argc, char *argv[])
 		}
 	}
 
+	printf("\n-----[ Local symbols ]-----\n");
+	for (llist_sym = bin->symbols; llist_sym != NULL; llist_sym = llist_sym->next) {
+		sym = (struct symbol *) llist_sym->data;
+		if (sym->type == SYM_TYPE_LOCAL) {
+			printf("%s\n", sym->name);
+		}
+	}
+
+	printf("\n-----[ Global symbols ]-----\n");
+	for (llist_sym = bin->symbols; llist_sym != NULL; llist_sym = llist_sym->next) {
+		sym = (struct symbol *) llist_sym->data;
+		if (sym->type == SYM_TYPE_GLOBAL) {
+			printf("%s\n", sym->name);
+		}
+	}
+
 	binary_unload(bin);
 
 	return 0;

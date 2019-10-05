@@ -1,5 +1,4 @@
-/*
- * This is a workaround, for not using autotools.
+/* * This is a workaround, for not using autotools.
  * See: https://stackoverflow.com/questions/11748035/binutils-bfd-h-wants-config-h-now
  */
 #define PACKAGE "binload"
@@ -24,6 +23,7 @@ static void section_destroy(struct section *sec);
 static void symbol_destroy(struct symbol *sym);
 static void llist_sec_dtor(void *data);
 static void llist_sym_dtor(void *data);
+static void sym_set_type(asymbol *bfd_sym, struct symbol *sym);
 
 struct binary *
 binary_load(char *fname)
@@ -38,14 +38,15 @@ binary_load(char *fname)
 	bin->name = (char *) malloc(strlen(fname) + 1);
 	if (bin->name) {
 		strncpy(bin->name, fname, strlen(fname));
+		bin->name[strlen(fname)] = '\0';
 	}
 
 	bin->entry = bfd_get_start_address(bfd_h);
 	bin->type_str = (char *) malloc(strlen(bfd_h->xvec->name) + 1);
 	if (bin->type_str) {
 		strncpy(bin->type_str, bfd_h->xvec->name, strlen(bfd_h->xvec->name));
+		bin->type_str[strlen(bfd_h->xvec->name)] = '\0';
 	}
-
 	switch (bfd_h->xvec->flavour) {
 		case bfd_target_elf_flavour:
 			bin->type = BIN_TYPE_ELF;
@@ -61,6 +62,7 @@ binary_load(char *fname)
 	bin->arch_str = (char *) malloc(strlen(bfd_info->printable_name) + 1);
 	if (bin->arch_str) {
 		strncpy(bin->arch_str, bfd_info->printable_name, strlen(bfd_info->printable_name));
+		bin->arch_str[strlen(bfd_info->printable_name)] = '\0';
 	}
 	switch (bfd_info->mach) {
 		case bfd_mach_i386_i386:
@@ -159,6 +161,7 @@ load_sections(bfd *bfd_h, struct binary *bin)
 		sec->name = (char *) malloc(sizeof(bfd_section_name(bfd_h, bfd_sec)) + 1);
 		if (sec->name) {
 			strncpy(sec->name, bfd_section_name(bfd_h, bfd_sec), sizeof(bfd_section_name(bfd_h, bfd_sec)));
+			sec->name[sizeof(bfd_section_name(bfd_h, bfd_sec))] = '\0';
 		}
 		sec->vma = bfd_section_vma(bfd_h, bfd_sec);
 		sec->size = bfd_section_size(bfd_h, bfd_sec);
@@ -189,7 +192,7 @@ load_symbols(bfd *bfd_h, struct binary *bin)
 	nbytes = bfd_get_symtab_upper_bound (bfd_h);
 	if (nbytes < 0) {
 		fprintf(stderr, "failed to read symtab (%s)\n", bfd_errmsg(bfd_get_error()));
-	} else if (nbytes > 0) {
+	} else if (nbytes) {
 		sym_tab = (asymbol **) malloc(nbytes);
 		if (sym_tab) {
 			nsyms = bfd_canonicalize_symtab(bfd_h, sym_tab);
@@ -198,14 +201,11 @@ load_symbols(bfd *bfd_h, struct binary *bin)
 			}
 			for (i = 0; i < nsyms; ++i) {
 				sym = symbol_init();
-				if (sym_tab[i]->flags & BSF_FUNCTION) {
-					sym->type = SYM_TYPE_FUNC;
-				} else if (sym_tab[i]->flags & BSF_SECTION_SYM) {
-					sym->type = SYM_TYPE_SEC;
-				}
+				sym_set_type(sym_tab[i], sym);
 				sym->name = (char *) malloc(strlen(sym_tab[i]->name) + 1);
 				if (sym->name) {
 					strncpy(sym->name, sym_tab[i]->name, strlen(sym_tab[i]->name));
+					sym->name[strlen(sym_tab[i]->name)] = '\0';
 				}
 				sym->addr = bfd_asymbol_value(sym_tab[i]);
 
@@ -223,6 +223,56 @@ load_symbols(bfd *bfd_h, struct binary *bin)
 static void
 load_dyn_symbols(bfd *bfd_h, struct binary *bin)
 {
+	asymbol **sym_tab;
+	long nbytes, nsyms, i;
+	struct symbol *sym;
+
+	nbytes = bfd_get_dynamic_symtab_upper_bound(bfd_h);
+	if (nbytes < 0) {
+		fprintf(stderr, "failed to read dynamic symtab (%s)\n", bfd_errmsg(bfd_get_error()));
+	} else if (nbytes) {
+		sym_tab = (asymbol **) malloc(nbytes);
+		if (sym_tab) {
+			nsyms = bfd_canonicalize_dynamic_symtab(bfd_h, sym_tab);
+			if (nsyms < 0) {
+				fprintf(stderr, "failed to read dynamic symtab (%s)\n", bfd_errmsg(bfd_get_error()));
+			}
+			for (i = 0; i < nsyms; ++i) {
+				sym = symbol_init();
+				sym_set_type(sym_tab[i], sym);
+				sym->name = (char *) malloc(strlen(sym_tab[i]->name) + 1);
+				if (sym->name) {
+					strncpy(sym->name, sym_tab[i]->name, strlen(sym_tab[i]->name));
+					sym->name[strlen(sym_tab[i]->name)] = '\0';
+				}
+				sym->addr = bfd_asymbol_value(sym_tab[i]);
+
+				if (!bin->symbols) {
+					bin->symbols = llist_init((void *) sym);
+				} else {
+					llist_append(bin->symbols, (void *) sym);
+				}
+			}
+			free(sym_tab);
+		}
+	}
+
+}
+
+static void
+sym_set_type(asymbol *bfd_sym, struct symbol *sym)
+{
+	if (bfd_sym->flags & BSF_FUNCTION) {
+		sym->type = SYM_TYPE_FUNC;
+	} else if (bfd_sym->flags & BSF_SECTION_SYM) {
+		sym->type = SYM_TYPE_SEC;
+	} else if (bfd_sym->flags & BSF_LOCAL) {
+		sym->type = SYM_TYPE_LOCAL;
+	} else if (bfd_sym->flags & BSF_GLOBAL) {
+		sym->type = SYM_TYPE_GLOBAL;
+	} else if (bfd_sym->flags & BSF_GLOBAL) {
+		sym->type = SYM_TYPE_DYNAMIC;
+	}
 }
 
 static struct binary *
@@ -280,4 +330,3 @@ llist_sym_dtor(void *data)
 {
 	symbol_destroy((struct symbol *) data);
 }
-

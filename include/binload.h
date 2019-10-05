@@ -23,7 +23,10 @@ enum sec_type {
 
 enum sym_type {
 	SYM_TYPE_SEC,
-	SYM_TYPE_FUNC
+	SYM_TYPE_FUNC,
+	SYM_TYPE_LOCAL,
+	SYM_TYPE_GLOBAL,
+	SYM_TYPE_DYNAMIC
 };
 
 struct binary {
