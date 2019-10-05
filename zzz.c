@@ -47,11 +47,11 @@ main(int argc, char *argv[])
 	}
 
 	nins = cs_disasm(cs_h,
-					text_sec->bytes,
-					text_sec->size,
-					text_sec->vma,
-					0, // num of ins to disasm, 0 for all
-					&ins);
+					 text_sec->bytes,
+					 text_sec->size,
+					 text_sec->vma,
+					 0, // num of ins to disasm, 0 for all
+					 &ins);
 	if (!nins) {
 		fprintf(stderr, "Disassembly failed\n");
 		err = 5;
