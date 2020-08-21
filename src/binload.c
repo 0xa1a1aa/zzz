@@ -278,7 +278,7 @@ sym_set_type(asymbol *bfd_sym, struct symbol *sym)
 static struct binary *
 binary_init(void)
 {
-	(struct binary *) calloc(1, sizeof(struct binary));
+	return (struct binary *) calloc(1, sizeof(struct binary));
 }
 
 static struct section *
