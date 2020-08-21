@@ -158,13 +158,13 @@ load_sections(bfd *bfd_h, struct binary *bin)
 		} else if (bfd_sec->flags & SEC_CODE) {
 			sec->type = SEC_TYPE_CODE;
 		}
-		sec->name = (char *) malloc(sizeof(bfd_section_name(bfd_h, bfd_sec)) + 1);
+		sec->name = (char *) malloc(sizeof(bfd_section_name(bfd_sec)) + 1);
 		if (sec->name) {
-			strncpy(sec->name, bfd_section_name(bfd_h, bfd_sec), sizeof(bfd_section_name(bfd_h, bfd_sec)));
-			sec->name[sizeof(bfd_section_name(bfd_h, bfd_sec))] = '\0';
+			strncpy(sec->name, bfd_section_name(bfd_sec), sizeof(bfd_section_name(bfd_sec)));
+			sec->name[sizeof(bfd_section_name(bfd_sec))] = '\0';
 		}
-		sec->vma = bfd_section_vma(bfd_h, bfd_sec);
-		sec->size = bfd_section_size(bfd_h, bfd_sec);
+		sec->vma = bfd_section_vma(bfd_sec);
+		sec->size = bfd_section_size(bfd_sec);
 		sec->bytes = (uint8_t *) malloc(sec->size);
 		if (sec->bytes) {
 			if (!bfd_get_section_contents(bfd_h, bfd_sec, sec->bytes, 0, sec->size)) {
