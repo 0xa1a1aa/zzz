@@ -33,6 +33,9 @@ binary_load(char *fname)
 	const bfd_arch_info_type *bfd_info;
 
 	bfd_h = open_bfd(fname);
+	if (!bfd_h) {
+		return NULL;
+	}
 
 	bin = binary_init();
 	bin->name = (char *) malloc(strlen(fname) + 1);
@@ -127,6 +130,8 @@ open_bfd(char *fname)
 	}
 	bfd_h = bfd_openr(fname, NULL);
 	if (!bfd_h) {
+		fprintf(stderr, "Failed to open file '%s' (%s)\n",
+				fname, bfd_errmsg(bfd_get_error()));
 		return NULL;
 	}
 	if (!bfd_check_format(bfd_h, bfd_object)) {

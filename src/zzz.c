@@ -24,6 +24,10 @@ main(int argc, char *argv[])
 	cs_h = 0;
 
 	bin = binary_load(argv[1]);
+	if (!bin) {
+		goto exit;
+	}
+
 	if (bin->type != BIN_TYPE_ELF ||
 		bin->arch != ARCH_X86) {
 		fprintf(stderr, "Unsupported binary type\n");
@@ -63,7 +67,7 @@ main(int argc, char *argv[])
 
 exit:
 	if (cs_h) cs_close(&cs_h);
-	binary_unload(bin);
+	if (bin) binary_unload(bin);
 
 	return err;
 }
